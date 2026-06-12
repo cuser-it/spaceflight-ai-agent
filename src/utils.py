@@ -33,14 +33,60 @@ def parse_prediction_offset_minutes(text: str) -> int | None:
     """Parse a simple future offset such as '30 分钟后' or '2 hours later'."""
 
     normalized = text.lower()
-    minute_match = re.search(r"(\d+)\s*(分钟|minute|minutes|min|mins)\s*(后|later)?", normalized)
+    minute_match = re.search(r"(\d+)\s*(分钟|minute|minutes|min|mins)\s*(以后|后|later)?", normalized)
     if minute_match:
         return int(minute_match.group(1))
 
-    hour_match = re.search(r"(\d+)\s*(小时|hour|hours|hr|hrs|h)\s*(后|later)?", normalized)
+    hour_match = re.search(r"(\d+)\s*(小时|hour|hours|hr|hrs|h)\s*(以后|后|later)?", normalized)
     if hour_match:
         return int(hour_match.group(1)) * 60
 
+    chinese_number = r"(一个|两个|[一二两三四五六七八九十]+)"
+    chinese_minute_match = re.search(rf"{chinese_number}\s*分钟\s*(?:以后|后)?", normalized)
+    if chinese_minute_match:
+        minutes = _parse_chinese_number(chinese_minute_match.group(1))
+        if minutes is not None:
+            return minutes
+
+    chinese_hour_match = re.search(rf"{chinese_number}\s*小时\s*(?:以后|后)?", normalized)
+    if chinese_hour_match:
+        hours = _parse_chinese_number(chinese_hour_match.group(1))
+        if hours is not None:
+            return hours * 60
+
+    return None
+
+
+def _parse_chinese_number(text: str) -> int | None:
+    normalized = text.strip()
+    if normalized == "一个":
+        normalized = "一"
+    if normalized.endswith("个"):
+        normalized = normalized[:-1]
+
+    digits = {
+        "一": 1,
+        "二": 2,
+        "两": 2,
+        "三": 3,
+        "四": 4,
+        "五": 5,
+        "六": 6,
+        "七": 7,
+        "八": 8,
+        "九": 9,
+    }
+    if normalized in digits:
+        return digits[normalized]
+    if normalized == "十":
+        return 10
+    if "十" in normalized:
+        tens_text, ones_text = normalized.split("十", 1)
+        tens = digits.get(tens_text, 1 if not tens_text else None)
+        ones = digits.get(ones_text, 0 if not ones_text else None)
+        if tens is None or ones is None:
+            return None
+        return tens * 10 + ones
     return None
 
 

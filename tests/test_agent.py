@@ -15,6 +15,12 @@ def test_should_route_general_question_to_response():
     assert agent_module.should_use_tool(state) == "respond"
 
 
+def test_should_route_time_follow_up_to_tool():
+    state = {"messages": [("user", "两个小时以后呢")]}
+
+    assert agent_module.should_use_tool(state) == "get_tle"
+
+
 def test_agent_position_reply_contains_coordinates(monkeypatch):
     monkeypatch.setattr(agent_module, "get_latest_tle", lambda satellite_name: "fake tle")
     monkeypatch.setattr(
@@ -35,3 +41,23 @@ def test_agent_position_reply_contains_coordinates(monkeypatch):
     assert "纬度 31.23" in reply
     assert "经度 121.47" in reply
     assert "420.5 km" in reply
+
+
+def test_agent_prediction_returns_trajectory(monkeypatch):
+    monkeypatch.setattr(agent_module, "get_latest_tle", lambda satellite_name: "fake tle")
+    monkeypatch.setattr(
+        agent_module,
+        "compute_position_from_tle",
+        lambda tle, at_time=None: {
+            "latitude": 31.23,
+            "longitude": 121.47,
+            "altitude_km": 420.5,
+            "timestamp_utc": at_time.isoformat(),
+        },
+    )
+
+    test_agent = agent_module.build_agent()
+    final_state = test_agent.invoke({"messages": [("user", "预测国际空间站 1 小时后的位置")]})
+
+    assert len(final_state["trajectory"]) > 2
+    assert final_state["trajectory"][0]["timestamp_utc"] != final_state["trajectory"][-1]["timestamp_utc"]

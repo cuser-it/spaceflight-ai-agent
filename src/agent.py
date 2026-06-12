@@ -1,11 +1,12 @@
 from __future__ import annotations
 
 import os
+from datetime import datetime, timedelta
 from typing import Any, Iterable
 
 from .state import AgentState, Message
 from .tools import compute_position_from_tle, extract_satellite_name, get_latest_tle
-from .utils import offset_datetime, parse_prediction_offset_minutes
+from .utils import ensure_utc, offset_datetime, parse_prediction_offset_minutes
 
 try:
     from langgraph.graph import END, StateGraph
@@ -37,6 +38,8 @@ def should_use_tool(state: AgentState) -> str:
     query = _latest_user_message(state.get("messages", ())).lower()
     if any(keyword in query for keyword in ORBIT_KEYWORDS):
         return "get_tle"
+    if parse_prediction_offset_minutes(query) is not None:
+        return "get_tle"
     return "respond"
 
 
@@ -54,15 +57,18 @@ def get_tle_node(state: AgentState) -> AgentState:
     query = _latest_user_message(state.get("messages", ()))
     satellite_name = extract_satellite_name(query)
     offset_minutes = parse_prediction_offset_minutes(query)
-    target_time = offset_datetime(offset_minutes)
+    base_time = ensure_utc()
+    target_time = offset_datetime(offset_minutes, base_time=base_time)
 
     tle = get_latest_tle(satellite_name)
     position = compute_position_from_tle(tle, at_time=target_time)
+    trajectory = _build_prediction_trajectory(tle, base_time, offset_minutes)
     response = _format_position_response(satellite_name, position, offset_minutes)
     return {
         "satellite_name": satellite_name,
         "tle": tle,
         "position": position,
+        "trajectory": trajectory,
         "messages": [("assistant", response)],
     }
 
@@ -169,6 +175,36 @@ def _format_position_response(
         f"高度 {position['altitude_km']:.1f} km。"
         f"\n\n计算时间 UTC：{position['timestamp_utc']}"
     )
+
+
+def _build_prediction_trajectory(
+    tle: str,
+    base_time: datetime,
+    offset_minutes: int | None,
+) -> list[dict[str, Any]]:
+    if not offset_minutes or offset_minutes <= 0:
+        return []
+
+    sample_count = min(max(int(offset_minutes // 2) + 1, 8), 61)
+    if sample_count < 2:
+        sample_count = 2
+
+    step_minutes = offset_minutes / (sample_count - 1)
+    samples: list[dict[str, Any]] = []
+    for index in range(sample_count):
+        sample_time = base_time + timedelta(minutes=step_minutes * index)
+        position = compute_position_from_tle(tle, at_time=sample_time)
+        if position.get("error"):
+            return []
+        samples.append(
+            {
+                "latitude": position["latitude"],
+                "longitude": position["longitude"],
+                "altitude_km": position["altitude_km"],
+                "timestamp_utc": position["timestamp_utc"],
+            }
+        )
+    return samples
 
 
 def _latest_user_message(messages: Iterable[Message]) -> str:

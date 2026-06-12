@@ -51,6 +51,9 @@ def test_parse_tle_lines_accepts_three_line_tle():
 
 def test_parse_prediction_offset_minutes():
     assert parse_prediction_offset_minutes("30 分钟后的位置") == 30
+    assert parse_prediction_offset_minutes("预测一个小时后的位置") == 60
+    assert parse_prediction_offset_minutes("两小时后的位置") == 120
+    assert parse_prediction_offset_minutes("两个小时以后呢") == 120
     assert parse_prediction_offset_minutes("2 hours later") == 120
     assert parse_prediction_offset_minutes("现在在哪里") is None
 

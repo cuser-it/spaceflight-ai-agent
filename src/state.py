@@ -14,3 +14,4 @@ class AgentState(TypedDict, total=False):
     satellite_name: str
     tle: str
     position: dict[str, Any]
+    trajectory: list[dict[str, Any]]
