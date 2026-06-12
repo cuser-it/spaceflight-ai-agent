@@ -81,6 +81,42 @@ def respond_node(state: AgentState) -> AgentState:
     return {"messages": [("assistant", response)]}
 
 
+def stream_llm_or_fallback(messages: Iterable[Message], query: str) -> Iterable[str]:
+    """Stream a general LLM response for UI use."""
+
+    _load_dotenv_if_available()
+    api_key = os.getenv("DEEPSEEK_API_KEY")
+    if not api_key:
+        yield (
+            "我是航天任务 AI 助手。你可以问我“国际空间站现在在哪里？”"
+            "这类卫星位置问题；配置 DEEPSEEK_API_KEY 后，我也可以处理更开放的任务对话。"
+        )
+        return
+
+    try:
+        from langchain_openai import ChatOpenAI
+    except ImportError:
+        yield "ERROR: 未安装 langchain-openai，请先运行 pip install -r requirements.txt"
+        return
+
+    llm = ChatOpenAI(
+        model="deepseek-chat",
+        temperature=0,
+        openai_api_key=api_key,
+        base_url="https://api.deepseek.com/v1",
+    )
+
+    yielded = False
+    for chunk in llm.stream(_build_chat_messages(messages)):
+        content = getattr(chunk, "content", "")
+        if isinstance(content, str) and content:
+            yielded = True
+            yield content
+
+    if not yielded:
+        yield ""
+
+
 def build_agent() -> Any:
     """Build a LangGraph agent, with a small local fallback for missing deps."""
 
@@ -148,6 +184,11 @@ def _invoke_llm_or_fallback(messages: Iterable[Message], query: str) -> str:
         openai_api_key=api_key,
         base_url="https://api.deepseek.com/v1",
     )
+    response = llm.invoke(_build_chat_messages(messages))
+    return getattr(response, "content", str(response))
+
+
+def _build_chat_messages(messages: Iterable[Message]) -> list[Message]:
     chat_messages: list[Message] = [
         (
             "system",
@@ -155,8 +196,7 @@ def _invoke_llm_or_fallback(messages: Iterable[Message], query: str) -> str:
         )
     ]
     chat_messages.extend(messages)
-    response = llm.invoke(chat_messages)
-    return getattr(response, "content", str(response))
+    return chat_messages
 
 
 def _format_position_response(

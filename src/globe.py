@@ -108,7 +108,7 @@ def _build_html(payload: dict[str, Any]) -> str:
     }}
     #scene {{
       position: relative;
-      min-height: 600px;
+      min-height: 100%;
     }}
     canvas {{
       display: block;
@@ -118,8 +118,8 @@ def _build_html(payload: dict[str, Any]) -> str:
     }}
     .hud {{
       position: absolute;
-      left: 18px;
-      bottom: 18px;
+      top: 16px;
+      right: 16px;
       max-width: min(360px, calc(100% - 36px));
       padding: 12px 14px;
       border: 1px solid rgba(255, 255, 255, 0.16);
@@ -127,6 +127,48 @@ def _build_html(payload: dict[str, Any]) -> str:
       backdrop-filter: blur(12px);
       color: #f6f8fb;
       box-sizing: border-box;
+    }}
+    .status-row {{
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      margin-bottom: 8px;
+    }}
+    .status-pill {{
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      min-height: 22px;
+      padding: 3px 8px;
+      border-radius: 999px;
+      font-size: 11px;
+      font-weight: 700;
+      line-height: 1;
+      letter-spacing: 0;
+    }}
+    .status-pill::before {{
+      content: "";
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: currentColor;
+      box-shadow: 0 0 10px currentColor;
+    }}
+    .status-pill.waiting {{
+      border: 1px solid rgba(255, 200, 87, 0.42);
+      background: rgba(255, 200, 87, 0.12);
+      color: #ffc857;
+    }}
+    .status-pill.live {{
+      border: 1px solid rgba(98, 217, 143, 0.42);
+      background: rgba(98, 217, 143, 0.12);
+      color: #62d98f;
+    }}
+    .status-pill.prediction {{
+      border: 1px solid rgba(255, 200, 87, 0.44);
+      background: rgba(255, 200, 87, 0.14);
+      color: #ffc857;
     }}
     .name {{
       margin: 0 0 8px;
@@ -180,12 +222,12 @@ def _build_html(payload: dict[str, Any]) -> str:
     }}
     @media (max-width: 560px) {{
       #scene {{
-        min-height: 520px;
+        min-height: 100%;
       }}
       .hud {{
-        left: 12px;
+        top: 12px;
         right: 12px;
-        bottom: 12px;
+        left: 12px;
         max-width: none;
       }}
       .meta {{
@@ -217,10 +259,17 @@ def _build_html(payload: dict[str, Any]) -> str:
 
     function renderHud() {{
       if (!DATA.hasPosition) {{
-        hud.innerHTML = `<p class="name">${{DATA.satelliteName}}</p><p class="empty">等待轨道数据</p>`;
+        hud.innerHTML = `
+          <div class="status-row"><span class="status-pill waiting">等待数据</span></div>
+          <p class="name">${{DATA.satelliteName}}</p>
+          <p class="empty">等待轨道数据</p>
+        `;
         return;
       }}
+      const statusClass = HAS_TRAJECTORY ? "prediction" : "live";
+      const statusText = HAS_TRAJECTORY ? "预测" : "数据";
       hud.innerHTML = `
+        <div class="status-row"><span class="status-pill ${{statusClass}}">${{statusText}}</span></div>
         <p class="name">${{DATA.satelliteName}}${{HAS_TRAJECTORY ? " 预测位置" : ""}}</p>
         <div class="meta">
           <div class="item"><span class="label">纬度</span><span class="value">${{formatNumber(DATA.latitude, 2)}}°</span></div>
@@ -256,7 +305,7 @@ def _build_html(payload: dict[str, Any]) -> str:
       scene.fog = new THREE.FogExp2(0x05070a, 0.035);
 
       const camera = new THREE.PerspectiveCamera(42, container.clientWidth / container.clientHeight, 0.1, 100);
-      camera.position.set(0, 0.12, 3.45);
+      camera.position.set(0, 0.12, 3.72);
 
       const renderer = new THREE.WebGLRenderer({{ antialias: true, alpha: false, preserveDrawingBuffer: true }});
       renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
