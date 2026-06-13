@@ -1,20 +1,17 @@
 from __future__ import annotations
 
-import base64
 import json
-from functools import lru_cache
-from pathlib import Path
 from typing import Any
 
 import streamlit.components.v1 as components
 
-_TEXTURE_DIR = Path(__file__).resolve().parent.parent / "assets" / "textures"
-_TEXTURE_FILES = {
-    "earth": ("earth_blue_marble_4096.jpg", "image/jpeg"),
-    "night": ("earth_night_4096.jpg", "image/jpeg"),
-    "clouds": ("earth_clouds_1024.png", "image/png"),
-    "normal": ("earth_normal_2048.jpg", "image/jpeg"),
-    "specular": ("earth_specular_2048.jpg", "image/jpeg"),
+_THREE_JS_URL = "app/static/vendor/three-r128.min.js"
+_TEXTURE_URLS = {
+    "earth": "app/static/textures/earth_blue_marble_fast.webp",
+    "night": "app/static/textures/earth_night_fast.webp",
+    "clouds": "app/static/textures/earth_clouds_fast.webp",
+    "normal": "app/static/textures/earth_normal_fast.webp",
+    "specular": "app/static/textures/earth_specular_fast.webp",
 }
 
 
@@ -85,13 +82,17 @@ def _sanitize_trajectory(trajectory: list[dict[str, Any]]) -> list[dict[str, Any
 
 def _build_html(payload: dict[str, Any]) -> str:
     data = json.dumps(payload, ensure_ascii=False)
-    textures = json.dumps(_texture_data_uris())
+    textures = json.dumps(_TEXTURE_URLS)
     return f"""
 <!doctype html>
 <html lang="zh-CN">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <link rel="preload" href="{_THREE_JS_URL}" as="script" />
+  <link rel="preload" href="{_TEXTURE_URLS["earth"]}" as="image" type="image/webp" />
+  <link rel="preload" href="{_TEXTURE_URLS["night"]}" as="image" type="image/webp" />
+  <link rel="preload" href="{_TEXTURE_URLS["clouds"]}" as="image" type="image/webp" />
   <style>
     :root {{
       color-scheme: dark;
@@ -120,13 +121,17 @@ def _build_html(payload: dict[str, Any]) -> str:
       position: absolute;
       top: 16px;
       right: 16px;
+      z-index: 4;
+      display: grid;
+      justify-items: end;
+      width: max-content;
       max-width: min(360px, calc(100% - 36px));
       padding: 12px 14px;
-      border: 1px solid rgba(255, 255, 255, 0.16);
       background: rgba(6, 9, 13, 0.72);
       backdrop-filter: blur(12px);
       color: #f6f8fb;
       box-sizing: border-box;
+      pointer-events: none;
     }}
     .status-row {{
       display: flex;
@@ -227,8 +232,7 @@ def _build_html(payload: dict[str, Any]) -> str:
       .hud {{
         top: 12px;
         right: 12px;
-        left: 12px;
-        max-width: none;
+        max-width: calc(100% - 24px);
       }}
       .meta {{
         grid-template-columns: 1fr;
@@ -244,7 +248,7 @@ def _build_html(payload: dict[str, Any]) -> str:
     <div id="fallback" class="fallback">3D 地球加载失败</div>
     <div id="hud" class="hud"></div>
   </div>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <script src="{_THREE_JS_URL}"></script>
   <script>
     const DATA = {data};
     const TEXTURES = {textures};
@@ -307,8 +311,8 @@ def _build_html(payload: dict[str, Any]) -> str:
       const camera = new THREE.PerspectiveCamera(42, container.clientWidth / container.clientHeight, 0.1, 100);
       camera.position.set(0, 0.12, 3.72);
 
-      const renderer = new THREE.WebGLRenderer({{ antialias: true, alpha: false, preserveDrawingBuffer: true }});
-      renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+      const renderer = new THREE.WebGLRenderer({{ antialias: true, alpha: false, powerPreference: "high-performance" }});
+      renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.5));
       renderer.setSize(container.clientWidth, container.clientHeight);
       renderer.setClearColor(0x05070a, 1);
       container.insertBefore(renderer.domElement, container.firstChild);
@@ -511,13 +515,3 @@ def _build_html(payload: dict[str, Any]) -> str:
 </body>
 </html>
 """
-
-
-@lru_cache(maxsize=1)
-def _texture_data_uris() -> dict[str, str]:
-    textures: dict[str, str] = {}
-    for key, (filename, mime_type) in _TEXTURE_FILES.items():
-        path = _TEXTURE_DIR / filename
-        encoded = base64.b64encode(path.read_bytes()).decode("ascii")
-        textures[key] = f"data:{mime_type};base64,{encoded}"
-    return textures

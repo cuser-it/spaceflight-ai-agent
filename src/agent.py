@@ -8,12 +8,6 @@ from .state import AgentState, Message
 from .tools import compute_position_from_tle, extract_satellite_name, get_latest_tle
 from .utils import ensure_utc, offset_datetime, parse_prediction_offset_minutes
 
-try:
-    from langgraph.graph import END, StateGraph
-except ImportError:  # Allows tests to run before optional deps are installed.
-    END = "__end__"
-    StateGraph = None
-
 ORBIT_KEYWORDS = (
     "位置",
     "在哪里",
@@ -120,7 +114,9 @@ def stream_llm_or_fallback(messages: Iterable[Message], query: str) -> Iterable[
 def build_agent() -> Any:
     """Build a LangGraph agent, with a small local fallback for missing deps."""
 
-    if StateGraph is None:
+    try:
+        from langgraph.graph import END, StateGraph
+    except ImportError:
         return SimpleSatelliteAgent()
 
     workflow = StateGraph(AgentState)
@@ -153,6 +149,24 @@ class SimpleSatelliteAgent:
 
     def stream(self, inputs: AgentState) -> Iterable[AgentState]:
         yield self.invoke(inputs)
+
+
+class LazySatelliteAgent:
+    """Delay graph construction until the first user request."""
+
+    def __init__(self) -> None:
+        self._agent: Any | None = None
+
+    def _get_agent(self) -> Any:
+        if self._agent is None:
+            self._agent = build_agent()
+        return self._agent
+
+    def invoke(self, inputs: AgentState) -> AgentState:
+        return self._get_agent().invoke(inputs)
+
+    def stream(self, inputs: AgentState) -> Iterable[AgentState]:
+        yield from self._get_agent().stream(inputs)
 
 
 def run_agent(prompt: str, history: list[Message] | None = None) -> str:
@@ -279,4 +293,4 @@ def _load_dotenv_if_available() -> None:
     load_dotenv()
 
 
-agent = build_agent()
+agent = LazySatelliteAgent()

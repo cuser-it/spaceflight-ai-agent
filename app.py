@@ -114,16 +114,28 @@ st.markdown(
         width: 100%;
         max-width: none;
         height: 100vh;
-        padding: 24px 28px;
+        padding: 0;
         overflow: hidden;
       }
       .block-container > div[data-testid="stVerticalBlock"] {
         height: 100%;
+        gap: 0 !important;
       }
       .block-container div[data-testid="stHorizontalBlock"] {
-        height: calc(100vh - 48px);
+        width: 100%;
+        height: 100vh;
         align-items: stretch;
-        gap: 28px;
+        gap: 0;
+      }
+      .block-container div[data-testid="stHorizontalBlock"] > div[data-testid="stColumn"] {
+        flex: 0 0 50% !important;
+        width: 50% !important;
+        max-width: 50% !important;
+        min-width: 0 !important;
+      }
+      .block-container div[data-testid="stHorizontalBlock"] > div[data-testid="stColumn"]:nth-child(2),
+      .block-container div[data-testid="stHorizontalBlock"] > div[data-testid="stColumn"]:nth-child(2) > div {
+        background: #07090d;
       }
       .model-status {
         position: fixed;
@@ -163,23 +175,29 @@ st.markdown(
       }
       .st-key-globe_panel {
         width: 100%;
-        height: calc(100vh - 48px);
+        height: 100vh;
         display: flex;
         align-items: center;
         justify-content: center;
         overflow: hidden;
       }
+      .st-key-globe_panel [data-testid="stElementContainer"],
+      .st-key-globe_panel [data-testid="stIFrame"] {
+        width: 100% !important;
+        height: 100vh !important;
+      }
       .st-key-chat_panel {
         width: 100%;
-        height: calc(100vh - 48px);
+        height: 100vh !important;
+        min-height: 100vh !important;
         display: flex;
         flex-direction: column;
         justify-content: center;
         overflow: hidden;
-        padding: 44px 24px 22px;
-        border: 1px solid rgba(255, 255, 255, 0.08);
-        border-radius: 8px;
-        background: rgba(8, 11, 16, 0.62);
+        padding: 56px 48px 34px;
+        border: 0;
+        border-radius: 0;
+        background: transparent;
         box-sizing: border-box;
       }
       .st-key-chat_scroll {
@@ -355,18 +373,51 @@ st.markdown(
         background: transparent;
         width: 100%;
         max-width: 700px;
+        height: 52px !important;
         margin-left: auto;
         margin-right: auto;
       }
       [data-testid="stChatInput"] > div {
+        min-height: 52px !important;
+        height: 52px !important;
+        display: flex !important;
+        flex-direction: row !important;
+        align-items: center !important;
+        gap: 10px !important;
+        padding: 8px 10px 8px 16px !important;
         background: rgba(11, 15, 22, 0.98) !important;
         border: 1px solid rgba(255, 255, 255, 0.16) !important;
         border-radius: 8px !important;
         box-shadow: none !important;
       }
+      [data-testid="stChatInput"] > div > div:first-child {
+        width: 100% !important;
+        height: 36px !important;
+        display: flex !important;
+        flex-direction: row !important;
+        align-items: center !important;
+        justify-content: space-between !important;
+        gap: 8px !important;
+      }
+      [data-testid="stChatInput"] > div > div:first-child > div:first-child {
+        flex: 1 1 auto !important;
+        min-width: 0 !important;
+        height: 32px !important;
+        display: flex !important;
+        align-items: center !important;
+      }
+      [data-testid="stChatInput"] > div > div:first-child > div:last-child {
+        flex: 0 0 36px !important;
+        width: 36px !important;
+        height: 36px !important;
+        display: flex !important;
+        align-items: center !important;
+      }
       [data-testid="stChatInput"] [data-baseweb="textarea"],
       [data-testid="stChatInput"] [data-baseweb="base-input"],
       [data-testid="stChatInput"] [data-baseweb="base-input"] > div {
+        min-height: 32px !important;
+        height: 32px !important;
         background: #0b0f16 !important;
         color: #f6f8fb !important;
         -webkit-text-fill-color: #f6f8fb !important;
@@ -382,9 +433,15 @@ st.markdown(
         -webkit-text-fill-color: #f6f8fb !important;
         font-size: 0.98rem !important;
         line-height: 1.45 !important;
+        min-height: 32px !important;
+        height: 32px !important;
+        max-height: 32px !important;
         border: 0 !important;
         box-shadow: none !important;
         outline: none !important;
+        resize: none !important;
+        overflow: hidden !important;
+        white-space: nowrap !important;
       }
       [data-testid="stChatInput"] textarea::placeholder {
         color: rgba(246, 248, 251, 0.58) !important;
@@ -393,6 +450,7 @@ st.markdown(
       [data-testid="stChatInput"] button {
         width: 36px !important;
         height: 36px !important;
+        flex: 0 0 36px !important;
         background: rgba(53, 211, 255, 0.16) !important;
         color: #f6f8fb !important;
         border-radius: 6px !important;
@@ -417,6 +475,12 @@ st.markdown(
         }
         .block-container div[data-testid="stHorizontalBlock"] {
           height: auto;
+          gap: 16px;
+        }
+        .block-container div[data-testid="stHorizontalBlock"] > div[data-testid="stColumn"] {
+          flex: 1 1 100% !important;
+          width: 100% !important;
+          max-width: 100% !important;
         }
         .model-status {
           top: 10px;
@@ -424,8 +488,8 @@ st.markdown(
         }
         .st-key-globe_panel,
         .st-key-chat_panel {
-          height: auto;
-          min-height: auto;
+          height: auto !important;
+          min-height: auto !important;
           padding: 16px 0;
           border: 0;
           background: transparent;
@@ -467,7 +531,7 @@ with globe_column:
             st.session_state.last_position,
             st.session_state.last_satellite_name,
             trajectory=st.session_state.last_trajectory,
-            height=580,
+            height=900,
         )
         if st.session_state.last_position_error:
             st.warning(st.session_state.last_position_error)
